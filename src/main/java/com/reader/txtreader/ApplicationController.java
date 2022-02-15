@@ -7,10 +7,12 @@ import javafx.stage.DirectoryChooser;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
+import java.io.*;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.NoSuchElementException;
+import java.util.Optional;
 
 public class ApplicationController {
     @FXML
@@ -58,60 +60,113 @@ public class ApplicationController {
         }
         else {
             if (fileName.getText().equals("")){
-                String filePath = getFolder() + "/" + getName();
-                fileName.setText(filePath);
+                try {
+                    String tmp = getName();
+                    if(!tmp.isEmpty()) {
+                        String filePath = getFolder() + "/" + tmp;
+                        if(!filePath.equals("/" + tmp)) {
+                            fileName.setText(filePath);
+                            saveText(fileName.getText(), textArea.getText());
+                            Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+                            alert.setTitle("File Save");
+                            alert.setHeaderText("Your file was save");
+                            alert.showAndWait();
+                        }
+                    }
+                }
+                catch(Exception e){
+                    System.out.println("Processo interrompido.");
+                }
             } else {
-
-
+                Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+                alert.setTitle("This file already exists.");
+                alert.setHeaderText("Are you sure?");
+                alert.setContentText("Press ok to subscribe!");
+                Optional<ButtonType> result = alert.showAndWait();
+                if (result.get() == ButtonType.OK){
+                    saveText(fileName.getText(), textArea.getText());
+                }
             }
         }
     }
 
    private String read(String absolutePath) throws IOException {
-       BufferedReader br = new BufferedReader(new FileReader(absolutePath));
-       String fullText = "";
        try {
-           StringBuilder text = new StringBuilder();
-           String line = br.readLine();
+           BufferedReader br = new BufferedReader(new FileReader(absolutePath));
 
-           while (line != null) {
-               text.append(line);
-               text.append(System.lineSeparator());
-               line = br.readLine();
+           String fullText = "";
+           try {
+               StringBuilder text = new StringBuilder();
+               String line = br.readLine();
+
+               while (line != null) {
+                   text.append(line);
+                   text.append(System.lineSeparator());
+                   line = br.readLine();
+               }
+               fullText = text.toString();
+           } finally {
+               br.close();
+               return fullText;
            }
-           fullText = text.toString();
-       }finally {
-           br.close();
-           return fullText;
+       } catch (FileNotFoundException e) {
+           Alert alert = new Alert(Alert.AlertType.ERROR);
+           alert.setTitle("Error");
+           alert.setHeaderText("File doesn't exist.");
+           alert.setContentText("The file doesn't exist.");
+           alert.showAndWait();
        }
+       return "";
    }
 
     private String getAbsolutePath() {
+        String path = "";
         FileChooser fileChooser;
         fileChooser = new FileChooser();
         fileChooser.getExtensionFilters().addAll(new FileChooser.ExtensionFilter("Text Files", "*"));
         fileChooser.setTitle("Open Resource File");
-
-        return fileChooser.showOpenDialog(stage).getAbsoluteFile().toString();
+        try {
+            path = fileChooser.showOpenDialog(stage).getAbsoluteFile().toString();
+        }
+        catch (NullPointerException e) {
+            System.out.println("Processo interrompido.");
+        }
+        return path;
     }
 
     private String getName() {
+        String name = "";
         TextInputDialog dialog = new TextInputDialog();
         dialog.setTitle("File name.");
         dialog.setContentText("Please enter file name:");
-        return dialog.showAndWait().get();
+        try {
+            name = dialog.showAndWait().get();
+        }
+        catch (Exception e) {
+            System.out.println("Processo interrompido.");
+        }
+        return name;
     }
 
-    private String getFolder(){
+    private String getFolder() throws NullPointerException{
+        String path = "";
         DirectoryChooser chooser;
         chooser = new DirectoryChooser();
         chooser.setTitle("Choose Folder");
-        return chooser.showDialog(null).toString();
+        try {
+            path = chooser.showDialog(null).toString();
+        }
+        catch (NullPointerException e) {
+            System.out.println("Processo interrompido.");
+        }
+        return path;
     }
 
-   private String saveNewOrSubscribe (String absolutePath) {
-
-
-        return "";
+   private void saveText (String absolutePath, String contents) {
+       try {
+           Files.writeString(Path.of(absolutePath), contents, StandardCharsets.UTF_8);
+       } catch (IOException ex) {
+           System.out.println("Processo interrompido.");
+       }
    }
 }
